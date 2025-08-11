@@ -1,13 +1,42 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { mastraClient } from "./lib/mastra-client";
 
 function App() {
   const [input, setInput] = useState("");
-
+  const [workflow, setWorkflow] = useState<any>(null);
   const [workflowRun, setWorkflowRun] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string; id: string }>>([]);
   const [gameWon, setGameWon] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to add initial workflow message
+  const addInitialMessage = useCallback((result: any) => {
+    const suspendedSteps = (result as any).suspended?.[0] || [];
+    for (const stepName of suspendedSteps) {
+      const step = result.steps[stepName];
+      if (step?.suspendPayload?.message) {
+        setChatMessages([
+          {
+            role: "assistant" as const,
+            content: step.suspendPayload.message,
+            id: crypto.randomUUID()
+          }
+        ]);
+        break;
+      }
+    }
+  }, []);
+
+  // Helper function to create message objects
+  const createMessage = useCallback(
+    (role: "user" | "assistant", content: string) => ({
+      role,
+      content,
+      id: crypto.randomUUID()
+    }),
+    []
+  );
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -18,12 +47,13 @@ function App() {
 
   useEffect(() => {
     const startWorkflow = async () => {
-      const workflow = await mastraClient.getWorkflow("headsUpWorkflow");
+      const workflowInstance = await mastraClient.getWorkflow("headsUpWorkflow");
+      setWorkflow(workflowInstance);
 
-      const run = await workflow.createRunAsync();
+      const run = await workflowInstance.createRunAsync();
       setWorkflowRun(run);
 
-      const result = await workflow.startAsync({
+      const result = await workflowInstance.startAsync({
         runId: run.runId,
         inputData: {
           start: true
@@ -31,19 +61,7 @@ function App() {
       });
 
       // Add the initial workflow message to chat
-      const suspendedSteps = (result as any).suspended?.[0] || [];
-      for (const stepName of suspendedSteps) {
-        const step = result.steps[stepName];
-        if (step?.suspendPayload?.message) {
-          const assistantMessage = {
-            role: "assistant" as const,
-            content: step.suspendPayload.message,
-            id: Date.now().toString()
-          };
-          setChatMessages([assistantMessage]);
-          break;
-        }
-      }
+      addInitialMessage(result);
     };
 
     startWorkflow();
@@ -52,13 +70,11 @@ function App() {
   const resetGame = async () => {
     // Clear all game state
     setChatMessages([]);
-
     setWorkflowRun(null);
     setGameWon(false);
     setInput("");
 
     // Start a new workflow
-    const workflow = await mastraClient.getWorkflow("headsUpWorkflow");
     const run = await workflow.createRunAsync();
     setWorkflowRun(run);
 
@@ -70,36 +86,22 @@ function App() {
     });
 
     // Add the initial workflow message to chat
-    const suspendedSteps = (result as any).suspended?.[0] || [];
-    for (const stepName of suspendedSteps) {
-      const step = result.steps[stepName];
-      if (step?.suspendPayload?.message) {
-        const assistantMessage = {
-          role: "assistant" as const,
-          content: step.suspendPayload.message,
-          id: Date.now().toString()
-        };
-        setChatMessages([assistantMessage]);
-        break;
-      }
-    }
+    addInitialMessage(result);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setInput(event.target.value);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
     if (!input.trim() || !workflowRun) return;
 
     // Add user message to chat
-    const userMessage = { role: "user" as const, content: input, id: Date.now().toString() };
-    setChatMessages((prev) => [...prev, userMessage]);
+    setChatMessages((prev) => [...prev, createMessage("user", input)]);
     setInput("");
 
     // Resume the workflow with the user's input
-    const workflow = await mastraClient.getWorkflow("headsUpWorkflow");
     const result = await workflow.resumeAsync({
       runId: workflowRun.runId,
       step: "question-step",
@@ -120,25 +122,26 @@ function App() {
     }
 
     if (suspendedMessage) {
-      const assistantMessage = {
-        role: "assistant" as const,
-        content: suspendedMessage,
-        id: Date.now().toString()
-      };
-      setChatMessages((prev) => [...prev, assistantMessage]);
+      setChatMessages((prev) => [...prev, createMessage("assistant", suspendedMessage)]);
     } else {
-      // Check if the workflow completed (game won)
+      // If no suspended message, the workflow should have completed
+      // Check if we need to set game won state and get the win message
       if (result.status === "success") {
-        const finalStep = result.steps["win-game-step"];
-        if (finalStep && finalStep.status === "success" && "output" in finalStep) {
-          const winMessage = `🎉 Congratulations! You guessed correctly! The famous person was ${finalStep.output.famousPerson}. You got it in ${finalStep.output.guessCount} guesses!`;
-          const assistantMessage = {
-            role: "assistant" as const,
-            content: winMessage,
-            id: Date.now().toString()
-          };
-          setChatMessages((prev) => [...prev, assistantMessage]);
-          setGameWon(true);
+        setGameWon(true);
+
+        // Get the win message from the question-step output
+        const questionStep = result.steps["question-step"];
+        const winGameStep = result.steps["win-game-step"];
+
+        if (questionStep?.status === "success" && "output" in questionStep && questionStep.output?.agentResponse) {
+          let winMessage = questionStep.output.agentResponse;
+
+          // Add guess count if available
+          if (winGameStep?.status === "success" && "output" in winGameStep && winGameStep.output?.guessCount) {
+            winMessage += ` You got it in ${winGameStep.output.guessCount} guesses!`;
+          }
+
+          setChatMessages((prev) => [...prev, createMessage("assistant", winMessage)]);
         }
       }
     }
