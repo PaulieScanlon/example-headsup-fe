@@ -148,19 +148,21 @@ function App() {
   };
 
   return (
-    <main className="flex h-dvh flex-col p-4">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold mb-2">Heads Up Game</h1>
+    <main className="flex h-dvh flex-col gap-4 p-4 bg-zinc-950 text-zinc-100">
+      <div>
+        <h1 className="text-4xl font-bold mb-0 text-zinc-100">Heads Up Game</h1>
       </div>
 
       {/* Chat Messages */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 mb-4 p-4 border rounded-lg bg-gray-50">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-4 border border-zinc-800 rounded-lg bg-zinc-950">
         {chatMessages.length === 0 ? (
-          <p className="text-center text-gray-500">Starting the game...</p>
+          <p className="text-center text-zinc-400">Starting the game...</p>
         ) : (
           chatMessages.map((message) => (
             <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.role === "user" ? "bg-blue-500 text-white" : "bg-white border border-gray-200"}`}>
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.role === "user" ? "bg-blue-500 text-white" : "bg-zinc-900 border border-zinc-800 text-zinc-100"}`}
+              >
                 <div className="text-xs mb-1 opacity-70">{message.role === "user" ? "You" : "Game"}</div>
                 {message.content}
               </div>
@@ -172,7 +174,7 @@ function App() {
       {/* Input Form */}
       {gameWon ? (
         <div className="flex justify-center">
-          <button onClick={resetGame} className="px-6 py-3 bg-green-500 text-white rounded-lg text-lg font-bold hover:bg-green-600 transition-colors">
+          <button onClick={resetGame} className="px-6 py-3 bg-green-600 text-white rounded-lg text-lg font-bold enabled:hover:bg-green-500 transition-colors">
             Play Again!
           </button>
         </div>
@@ -183,9 +185,13 @@ function App() {
             value={input}
             onChange={handleInputChange}
             placeholder="Ask a yes/no question..."
-            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-2 border border-zinc-700 rounded-lg bg-zinc-900 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring focus:ring-zinc-600"
           />
-          <button type="submit" disabled={!input.trim()} className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg enabled:hover:bg-green-500 disabled:bg-zinc-800 disabled:text-zinc-400 disabled:cursor-not-allowed"
+          >
             Send
           </button>
         </form>
