@@ -148,7 +148,7 @@ function App() {
   };
 
   return (
-    <main className="flex h-dvh flex-col gap-4 p-4 bg-zinc-950 text-zinc-100">
+    <main className="flex h-dvh flex-col gap-4 p-4 text-zinc-100 max-w-4xl mx-auto w-full">
       <div>
         <h1 className="text-4xl font-bold mb-0 text-zinc-100">Heads Up Game</h1>
       </div>
@@ -156,13 +156,11 @@ function App() {
       {/* Chat Messages */}
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-4 border border-zinc-800 rounded-lg bg-zinc-950">
         {chatMessages.length === 0 ? (
-          <p className="text-center text-zinc-400">Starting the game...</p>
+          <p className="text-center text-zinc-200">Starting the game...</p>
         ) : (
           chatMessages.map((message) => (
             <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.role === "user" ? "bg-blue-500 text-white" : "bg-zinc-900 border border-zinc-800 text-zinc-100"}`}
-              >
+              <div className={`px-4 py-2 rounded-lg ${message.role === "user" ? "bg-blue-500 text-white" : "bg-zinc-900 border border-zinc-800 text-zinc-100"}`}>
                 <div className="text-xs mb-1 opacity-70">{message.role === "user" ? "You" : "Game"}</div>
                 {message.content}
               </div>
@@ -185,12 +183,12 @@ function App() {
             value={input}
             onChange={handleInputChange}
             placeholder="Ask a yes/no question..."
-            className="flex-1 px-3 py-2 border border-zinc-700 rounded-lg bg-zinc-900 text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring focus:ring-zinc-600"
+            className="flex-1 px-3 py-2 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring focus:ring-zinc-700"
           />
           <button
             type="submit"
             disabled={!input.trim()}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg enabled:hover:bg-green-500 disabled:bg-zinc-800 disabled:text-zinc-400 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg enabled:hover:bg-green-500 disabled:bg-zinc-900 disabled:text-zinc-400 disabled:cursor-not-allowed"
           >
             Send
           </button>
