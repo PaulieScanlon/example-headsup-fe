@@ -9,12 +9,14 @@ function App() {
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string; id: string }>>([]);
   const [gameWon, setGameWon] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const workflowInitialized = useRef(false);
 
   // Helper function to add initial workflow message
-  const addInitialMessage = useCallback((result: any) => {
+  const addInitialMessage = (result: any) => {
     const suspendedSteps = (result as any).suspended?.[0] || [];
     for (const stepName of suspendedSteps) {
       const step = result.steps[stepName];
+
       if (step?.suspendPayload?.agentResponse) {
         setChatMessages([
           {
@@ -26,7 +28,7 @@ function App() {
         break;
       }
     }
-  }, []);
+  };
 
   // Helper function to create message objects
   const createMessage = useCallback(
@@ -46,12 +48,15 @@ function App() {
   }, [chatMessages]);
 
   useEffect(() => {
+    if (workflowInitialized.current) return;
+
     const startWorkflow = async () => {
+      workflowInitialized.current = true;
+
       const workflowInstance = await mastraClient.getWorkflow("headsUpWorkflow");
       setWorkflow(workflowInstance);
 
       const run = await workflowInstance.createRunAsync();
-      setWorkflowRun(run);
 
       const result = await workflowInstance.startAsync({
         runId: run.runId,
@@ -59,6 +64,8 @@ function App() {
           start: true
         }
       });
+
+      setWorkflowRun(run);
 
       // Add the initial workflow message to chat
       addInitialMessage(result);
