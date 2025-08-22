@@ -15,11 +15,11 @@ function App() {
     const suspendedSteps = (result as any).suspended?.[0] || [];
     for (const stepName of suspendedSteps) {
       const step = result.steps[stepName];
-      if (step?.suspendPayload?.message) {
+      if (step?.suspendPayload?.agentResponse) {
         setChatMessages([
           {
             role: "assistant" as const,
-            content: step.suspendPayload.message,
+            content: step.suspendPayload.agentResponse,
             id: crypto.randomUUID()
           }
         ]);
@@ -104,7 +104,7 @@ function App() {
     // Resume the workflow with the user's input
     const result = await workflow.resumeAsync({
       runId: workflowRun.runId,
-      step: "question-step",
+      step: "game-step",
       resumeData: {
         userMessage: input
       }
@@ -115,8 +115,8 @@ function App() {
     let suspendedMessage = null;
     for (const stepName of suspendedSteps) {
       const step = result.steps[stepName];
-      if (step?.suspendPayload?.message) {
-        suspendedMessage = step.suspendPayload.message;
+      if (step?.payload?.agentResponse) {
+        suspendedMessage = step.payload.agentResponse;
         break;
       }
     }
@@ -129,16 +129,16 @@ function App() {
       if (result.status === "success") {
         setGameWon(true);
 
-        // Get the win message from the question-step output
-        const questionStep = result.steps["question-step"];
-        const winGameStep = result.steps["win-game-step"];
+        // Get the win message from the game-step output
+        const gameStep = result.steps["game-step"];
+        const winStep = result.steps["win-step"];
 
-        if (questionStep?.status === "success" && "output" in questionStep && questionStep.output?.agentResponse) {
-          let winMessage = questionStep.output.agentResponse;
+        if (gameStep?.status === "success" && "output" in gameStep && gameStep.output?.agentResponse) {
+          let winMessage = gameStep.output.agentResponse;
 
           // Add guess count if available
-          if (winGameStep?.status === "success" && "output" in winGameStep && winGameStep.output?.guessCount) {
-            winMessage += ` You got it in ${winGameStep.output.guessCount} guesses!`;
+          if (winStep?.status === "success" && "output" in winStep && winStep.output?.guessCount) {
+            winMessage += ` You got it in ${winStep.output.guessCount} guesses!`;
           }
 
           setChatMessages((prev) => [...prev, createMessage("assistant", winMessage)]);
@@ -148,52 +148,50 @@ function App() {
   };
 
   return (
-    <main className="flex h-dvh flex-col gap-4 p-4 text-zinc-100 max-w-4xl mx-auto w-full">
+    <main className="flex h-dvh flex-col gap-4 p-4 text-zinc-100 max-w-6xl mx-auto w-full">
       <div>
         <h1 className="text-4xl font-bold mb-0 text-zinc-100">Heads Up Game</h1>
       </div>
 
-      {/* Chat Messages */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-4 border border-zinc-800 rounded-lg bg-zinc-950">
-        {chatMessages.length === 0 ? (
-          <p className="text-center text-zinc-200">Starting the game...</p>
-        ) : (
-          chatMessages.map((message) => (
-            <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`px-4 py-2 rounded-lg ${message.role === "user" ? "bg-blue-500 text-white" : "bg-zinc-900 border border-zinc-800 text-zinc-100"}`}>
-                <div className="text-xs mb-1 opacity-70">{message.role === "user" ? "You" : "Game"}</div>
-                {message.content}
-              </div>
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-4 bg-zinc-950 rounded-lg border border-zinc-800">
+        {chatMessages.map((message) => (
+          <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`px-4 py-2 rounded-lg ${message.role === "user" ? "bg-blue-500 text-white" : "bg-zinc-900 border border-zinc-800 text-zinc-100"}`}>
+              <div className="text-xs mb-1 opacity-70">{message.role === "user" ? "You" : "Game"}</div>
+              {message.content}
             </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
 
-      {/* Input Form */}
-      {gameWon ? (
-        <div className="flex justify-center">
-          <button onClick={resetGame} className="px-6 py-3 bg-green-600 text-white rounded-lg text-lg font-bold enabled:hover:bg-green-500 transition-colors">
+      {gameWon && (
+        <div className="text-center">
+          <button
+            onClick={resetGame}
+            className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold enabled:hover:bg-green-700 disabled:bg-zinc-800 disabled:cursor-not-allowed"
+          >
             Play Again!
           </button>
         </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Ask a yes/no question..."
-            className="flex-1 px-3 py-2 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring focus:ring-zinc-700"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg enabled:hover:bg-green-500 disabled:bg-zinc-900 disabled:text-zinc-400 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
-        </form>
       )}
+
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={handleInputChange}
+          placeholder="Ask a yes/no question or make a guess..."
+          className="flex-1 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={gameWon}
+        />
+        <button
+          type="submit"
+          disabled={!input.trim() || gameWon}
+          className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold enabled:hover:bg-green-700 disabled:bg-zinc-800 disabled:cursor-not-allowed"
+        >
+          Send
+        </button>
+      </form>
     </main>
   );
 }
