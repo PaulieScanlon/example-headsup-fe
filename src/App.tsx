@@ -17,11 +17,11 @@ function App() {
     for (const stepName of suspendedSteps) {
       const step = result.steps[stepName];
 
-      if (step?.suspendPayload?.agentResponse) {
+      if (step?.suspendPayload?.suspendResponse) {
         setChatMessages([
           {
             role: "assistant" as const,
-            content: step.suspendPayload.agentResponse,
+            content: step.suspendPayload.suspendResponse,
             id: crypto.randomUUID()
           }
         ]);
